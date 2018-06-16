@@ -468,16 +468,30 @@ parseToken settings = (char '<' >> parseLt) <|> TokenContent <$> parseContent se
                 return $ TokenXMLDeclaration as
             else do
                 skipSpace
-                x <- T.pack <$> manyTill anyChar (try $ string "?>")
+                let nextS 2 _ = Nothing
+                    nextS 1 '>' = Just 2
+                    nextS 0 '?' = Just 1
+                    nextS _ _ = Just 0
+                x <- T.dropEnd 2 <$> AT.scan 0 nextS
                 return $ TokenInstruction $ Instruction name x
     parseComment = do
         char' '-'
         char' '-'
-        c <- T.pack <$> manyTill anyChar (string "-->") -- FIXME use takeWhile instead
+        let nextS 3 _ = Nothing
+            nextS 2 '>' = Just 3
+            nextS 1 '-' = Just 2
+            nextS 0 '-' = Just 1
+            nextS _ _ = Just 0
+        c <- T.dropEnd 3 <$> AT.scan 0 nextS
         return $ TokenComment c
     parseCdata = do
         _ <- string "[CDATA["
-        t <- T.pack <$> manyTill anyChar (string "]]>") -- FIXME use takeWhile instead
+        let nextS 3 _ = Nothing
+            nextS 2 '>' = Just 3
+            nextS 1 ']' = Just 2
+            nextS 0 ']' = Just 1
+            nextS _ _ = Just 0
+        t <- T.dropEnd 3 <$> AT.scan 0 nextS
         return $ TokenCDATA t
     parseDoctype = do
         _ <- string "DOCTYPE"
